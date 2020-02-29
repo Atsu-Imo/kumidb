@@ -7,6 +7,41 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
+func handleListener(listener *net.TCPListener) error {
+	defer listener.Close()
+	for {
+		conn, err := listener.AcceptTCP()
+		if err != nil {
+			if netError, ok := err.(net.Error); ok {
+				if netError.Temporary() {
+					log.Fatal("AcceptTCP", netError)
+				}
+			}
+			return err
+		}
+		go handlerConnection(conn)
+	}
+}
+func handlerConnection(conn *net.TCPConn) error {
+	defer conn.Close()
+	buf := make([]byte, 1024)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			if netError, ok := err.(net.Error); ok {
+				if netError.Temporary() {
+					log.Fatal("Read", netError)
+					continue
+				}
+			}
+			return err
+		}
+		n, err = conn.Write(buf[:n])
+		if err != nil {
+			log.Fatal("Write", err)
+		}
+	}
+}
 func main() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:6379")
 	if err != nil {
@@ -17,36 +52,9 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenTCP", err)
 	}
-	for {
-		defer listener.Close()
-		conn, err := listener.AcceptTCP()
-		if err != nil {
-			if netError, ok := err.(net.Error); ok {
-				if netError.Temporary() {
-					log.Fatal("AcceptTCP", netError)
-				}
-			}
-		}
-		go func() {
-			defer conn.Close()
-			buf := make([]byte, 1024)
-			for {
-				n, err := conn.Read(buf)
-				if err != nil {
-					if netError, ok := err.(net.Error); ok {
-						if netError.Temporary() {
-							log.Fatal("Read", netError)
-							continue
-						}
-					}
-					return
-				}
-				n, err = conn.Write(buf[:n])
-				if err != nil {
-					log.Fatal("Write", err)
-				}
-			}
-		}()
+	err = handleListener(listener)
+	if err != nil {
+		log.Fatal("handleListener", err)
 	}
 }
 func sample() {
