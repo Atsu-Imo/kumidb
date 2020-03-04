@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"strings"
 )
 
 // Conn コネクションにまつわるあれこれの構造体
@@ -57,6 +58,14 @@ func (c *Conn) handleRead() {
 			return
 		}
 
+		input := string(buf[:n])
+		if strings.HasPrefix(input, "insert") {
+			c.conn.Write([]byte("inserted!"))
+		} else if strings.HasPrefix(input, "select") {
+			c.conn.Write([]byte("selected!"))
+		} else {
+			c.conn.Write([]byte("not command"))
+		}
 		n, err = c.conn.Write(buf[:n])
 		if err != nil {
 			log.Println("Write", err)

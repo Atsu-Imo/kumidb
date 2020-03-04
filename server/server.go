@@ -6,6 +6,8 @@ import (
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/tidwall/buntdb"
 )
 
 const (
@@ -25,11 +27,12 @@ type Server struct {
 	AcceptCtx context.Context
 	errAccept context.CancelFunc
 	Wg        sync.WaitGroup
+	Db        *buntdb.DB
 	ChClosed  chan struct{}
 }
 
 // NewServer TCP接続を待ち受けるServerを作る
-func NewServer(parentCtx context.Context, addr string) *Server {
+func NewServer(parentCtx context.Context, addr string, db *buntdb.DB) *Server {
 	acceptCtx, errAccept := context.WithCancel(parentCtx)
 	// serverCtxはすべてのgoroutineが同じContext上で動いていることを示す
 	// goroutine間の値の伝播
@@ -43,6 +46,7 @@ func NewServer(parentCtx context.Context, addr string) *Server {
 		shutdown:  shutdown,
 		AcceptCtx: acceptCtx,
 		errAccept: errAccept,
+		Db:        db,
 		ChClosed:  chCloed,
 	}
 }

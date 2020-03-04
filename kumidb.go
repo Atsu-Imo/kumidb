@@ -19,14 +19,22 @@ func main() {
 	// whitelist SIGINT
 	signal.Ignore()
 	signal.Notify(signalChan, syscall.SIGINT)
-	srv := server.NewServer(context.Background(), "0.0.0.0:6379")
 
-	err := srv.Listen()
+	// インメモリデータベースの起動
+	db, err := buntdb.Open(":memory:")
+	if err != nil {
+		log.Fatal("Open DB", err)
+		return
+	}
+	defer db.Close()
+	srv := server.NewServer(context.Background(), "0.0.0.0:6379", db)
+
+	err = srv.Listen()
 
 	if err != nil {
 		log.Fatal("Listen", err)
 	}
-	log.Println("tcp server start")
+	log.Println("database created")
 
 	select {
 	// signalChanに(シグナル)が来るまで待機する
