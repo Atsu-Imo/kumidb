@@ -92,7 +92,7 @@ func (s *Server) handleListener() {
 			//
 			if listenerCloseError(err) {
 				select {
-				// Contextがキャンセルされたときに閉じられるチャネルを返す
+				// Contextがキャンセルされたとき処理を終わる
 				case <-s.ctx.Done():
 					return
 				default:
