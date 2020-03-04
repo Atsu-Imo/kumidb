@@ -74,7 +74,7 @@ func (s *Server) Shutdown() {
 	select {
 	case <-s.ctx.Done():
 	default:
-		s.Shutdown()
+		s.shutdown()
 		s.listener.Close()
 	}
 }
