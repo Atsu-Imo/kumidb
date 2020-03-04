@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 	"strings"
+
+	"github.com/tidwall/buntdb"
 )
 
 // Conn コネクションにまつわるあれこれの構造体
@@ -60,16 +62,43 @@ func (c *Conn) handleRead() {
 
 		input := string(buf[:n])
 		if strings.HasPrefix(input, "insert") {
-			c.conn.Write([]byte("inserted!"))
+			c.conn.Write([]byte("insert start\n"))
+			data := strings.Split(input, " ")
+			pair := strings.Split(data[1], ":")
+			c.insert(pair[0], pair[1])
+			c.conn.Write([]byte("insert finish\n"))
 		} else if strings.HasPrefix(input, "select") {
-			c.conn.Write([]byte("selected!"))
+			c.conn.Write([]byte("select start\n"))
+			data := strings.Split(input, " ")
+			result := c.find(strings.TrimRight(data[1], "\n"))
+			c.conn.Write([]byte(result + "\n"))
+			c.conn.Write([]byte("select end\n"))
 		} else {
-			c.conn.Write([]byte("not command"))
-		}
-		n, err = c.conn.Write(buf[:n])
-		if err != nil {
-			log.Println("Write", err)
-			return
+			c.conn.Write([]byte("not command\n"))
 		}
 	}
+}
+
+func (c *Conn) insert(key string, value string) {
+	c.svr.Db.Update(func(tx *buntdb.Tx) error {
+		_, _, err := tx.Set(key, value, nil)
+		return err
+	})
+}
+
+func (c *Conn) find(key string) string {
+	var value string
+	// うまくいってない
+	err := c.svr.Db.View(func(tx *buntdb.Tx) error {
+		val, err := tx.Get(key)
+		if err != nil {
+			return err
+		}
+		value = val
+		return nil
+	})
+	if err != nil {
+		return "not found"
+	}
+	return value
 }
